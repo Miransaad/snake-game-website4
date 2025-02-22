@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game - Play</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Firebase Bundle (version 8.10.1) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Snake Game</h1>
+    </header>
+    <main>
+        <div id="scoreDisplay">Score: 0 | High Score: <span id="highScore">0</span> | Player: <span id="playerName"></span></div>
+        <canvas id="gameCanvas" width="320" height="240"></canvas>
+        <div id="controls">
+            <button id="up">↑</button>
+            <button id="left">←</button>
+            <button id="down">↓</button>
+            <button id="right">→</button>
+        </div>
+        <div id="leaderboard">
+            <h3>Leaderboard</h3>
+            <ul id="leaderboardList"></ul>
+        </div>
+    </main>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAtOOf5jBOlGyOOU9QAB69UoBFKg41IKIE",
+            authDomain: "snake-game-website-1bc00.firebaseapp.com",
+            databaseURL: "https://snake-game-website-1bc00-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "snake-game-website-1bc00",
+            storageBucket: "snake-game-website-1bc00.firebasestorage.app",
+            messagingSenderId: "620090103613",
+            appId: "1:620090103613:web:8b3f31390cdbe4e27a9754"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const leaderboardList = document.getElementById("leaderboardList");
+
+        const width = canvas.width;
+        const height = canvas.height;
+        const snakeBlock = 10;
+        const snakeSpeed = 15;
+
+        const black = "#000000";
+        const white = "#FFFFFF";
+        const green = "#00FF00";
+        const red = "#FF0000";
+        const gray = "#808080";
+
+        let snake = [];
+        let direction = "RIGHT";
+        let foodX, foodY;
+        let score = 0;
+        let highScore = localStorage.getItem("snakeHighScore") || 0;
+        let gameRunning = false;
+        let gameOver = false;
+        let gameLoopId;
+        let username = "";
+        let enteringUsername = true;
+        let usernameText = "";
+
+        const scoreDisplay = document.getElementById("scoreDisplay");
+        const highScoreDisplay = document.getElementById("highScore");
+        const playerNameDisplay = document.getElementById("playerName");
+        highScoreDisplay.textContent = highScore;
+
+        function initGame() {
+            snake = [];
+            const initialX = Math.round(width / 2 / 10) * 10;
+            const initialY = Math.round(height / 2 / 10) * 10;
+            snake.push({ x: initialX, y: initialY });
+            direction = "RIGHT";
+            score = 0;
+            gameRunning = true;
+            gameOver = false;
+            generateFood();
+            updateScoreDisplay();
+            if (gameLoopId) clearTimeout(gameLoopId);
+            gameLoop();
+        }
+
+        function generateFood() {
+            while (true) {
+                foodX = Math.round(Math.random() * (width - snakeBlock) / 10) * 10;
+                foodY = Math.round(Math.random() * (height - snakeBlock) / 10) * 10;
+                if (!snake.some(segment => segment.x === foodX && segment.y === foodY)) {
+                    break;
+                }
+            }
+        }
+
+        document.addEventListener("keydown", (event) => {
+            if (enteringUsername) {
+                if (event.key === "Enter" && usernameText.trim() !== "") {
+                    username = usernameText.trim() === "" ? "Anonymous" : usernameText;
+                    enteringUsername = false;
+                    initGame();
+                } else if (event.key === "Backspace") {
+                    usernameText = usernameText.slice(0, -1);
+                } else if (event.key.length === 1 && usernameText.length < 15) {
+                    usernameText += event.key;
+                }
+                return;
+            }
+            if (!gameRunning && gameOver) {
+                if (event.key === "Enter" || event.key === " ") {
+                    initGame();
+                }
+                return;
+            }
+            switch (event.key) {
+                case "ArrowLeft": if (direction !== "RIGHT") direction = "LEFT"; break;
+                case "ArrowRight": if (direction !== "LEFT") direction = "RIGHT"; break;
+                case "ArrowUp": if (direction !== "DOWN") direction = "UP"; break;
+                case "ArrowDown": if (direction !== "UP") direction = "DOWN"; break;
+            }
+        });
+
+        document.getElementById("up").addEventListener("click", () => {
+            if (gameRunning && direction !== "DOWN") direction = "UP";
+        });
+        document.getElementById("left").addEventListener("click", () => {
+            if (gameRunning && direction !== "RIGHT") direction = "LEFT";
+        });
+        document.getElementById("down").addEventListener("click", () => {
+            if (gameRunning && direction !== "UP") direction = "DOWN";
+        });
+        document.getElementById("right").addEventListener("click", () => {
+            if (gameRunning && direction !== "LEFT") direction = "RIGHT";
+        });
+
+        canvas.addEventListener("click", (event) => {
+            if (!gameRunning && gameOver) {
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                if (x >= 100 && x <= 220 && y >= 120 && y <= 160) {
+                    initGame(); // Try Again
+                }
+                if (x >= 100 && x <= 220 && y >= 170 && y <= 210) {
+                    enteringUsername = true; // Play Again with new username
+                    usernameText = "";
+                }
+            }
+        });
+
+        function gameLoop() {
+            ctx.fillStyle = black;
+            ctx.fillRect(0, 0, width, height);
+
+            if (enteringUsername) {
+                ctx.fillStyle = white;
+                ctx.font = "20px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("Enter Username:", width / 2, height / 2 - 20);
+                ctx.fillText(usernameText || " ", width / 2, height / 2 + 20);
+                ctx.font = "16px Arial";
+                ctx.fillText("Press Enter to Start", width / 2, height / 2 + 60);
+                gameLoopId = setTimeout(gameLoop, 1000 / snakeSpeed);
+                return;
+            }
+
+            if (!gameRunning) {
+                showGameOver();
+                return;
+            }
+
+            let head = { ...snake[0] };
+            switch (direction) {
+                case "LEFT": head.x -= snakeBlock; break;
+                case "RIGHT": head.x += snakeBlock; break;
+                case "UP": head.y -= snakeBlock; break;
+                case "DOWN": head.y += snakeBlock; break;
+            }
+
+            if (head.x < 0 || head.x >= width || head.y < 0 || head.y >= height ||
+                snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+                gameRunning = false;
+                gameOver = true;
+                updateHighScore();
+                saveScoreToLeaderboard();
+                showGameOver();
+                return;
+            }
+
+            if (head.x === foodX && head.y === foodY) {
+                score++;
+                generateFood();
+                updateScoreDisplay();
+            } else {
+                snake.pop();
+            }
+
+            snake.unshift(head);
+
+            ctx.fillStyle = green;
+            snake.forEach(segment => {
+                ctx.fillRect(segment.x, segment.y, snakeBlock, snakeBlock);
+            });
+            ctx.fillStyle = red;
+            ctx.fillRect(foodX, foodY, snakeBlock, snakeBlock);
+
+            gameLoopId = setTimeout(gameLoop, 1000 / snakeSpeed);
+        }
+
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `Score: ${score} | High Score: ${highScore} | Player: ${username}`;
+            playerNameDisplay.textContent = username;
+        }
+
+        function updateHighScore() {
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem("snakeHighScore", highScore);
+                highScoreDisplay.textContent = highScore;
+            }
+        }
+
+        function saveScoreToLeaderboard() {
+            db.ref("leaderboard").push({
+                username: username,
+                score: score,
+                timestamp: Date.now()
+            });
+            updateLeaderboard();
+        }
+
+        function updateLeaderboard() {
+            db.ref("leaderboard").orderByChild("score").limitToLast(5).once("value", (snapshot) => {
+                const data = snapshot.val();
+                leaderboardList.innerHTML = "";
+                if (data) {
+                    const scores = Object.entries(data)
+                        .map(([id, entry]) => ({ id, ...entry }))
+                        .sort((a, b) => b.score - a.score)
+                        .slice(0, 5);
+                    scores.forEach(entry => {
+                        const li = document.createElement("li");
+                        li.textContent = `${entry.username}: ${entry.score}`;
+                        leaderboardList.appendChild(li);
+                    });
+                }
+            });
+        }
+
+        function showGameOver() {
+            ctx.fillStyle = white;
+            ctx.font = "20px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("Game Over", width / 2, height / 2 - 20);
+
+            ctx.fillStyle = gray;
+            ctx.fillRect(100, 120, 120, 40);
+            ctx.fillStyle = white;
+            ctx.font = "16px Arial";
+            ctx.fillText("Try Again", width / 2, 145);
+
+            ctx.fillStyle = gray;
+            ctx.fillRect(100, 170, 120, 40);
+            ctx.fillStyle = white;
+            ctx.fillText("Play Again", width / 2, 195);
+        }
+
+        gameLoop();
+        updateLeaderboard();
+    </script>
+</body>
+</html>
