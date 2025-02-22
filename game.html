@@ -69,11 +69,12 @@
 
         // Alphabet buttons for mobile
         const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-        const buttonWidth = 30;
-        const buttonHeight = 30;
-        const buttonsPerRow = 10;
-        const buttonStartX = 10;
-        const buttonStartY = 120;
+        const buttonWidth = 20;  // Reduced from 22 to fit
+        const buttonHeight = 20; // Reduced from 22
+        const buttonsPerRow = 13;
+        const buttonStartX = 15; // Adjusted to center better
+        const buttonStartY = 100;
+        const buttonSpacing = 3; // Reduced from 4
 
         const scoreDisplay = document.getElementById("scoreDisplay");
         const highScoreDisplay = document.getElementById("highScore");
@@ -155,8 +156,8 @@
                 for (let i = 0; i < alphabet.length; i++) {
                     const col = i % buttonsPerRow;
                     const row = Math.floor(i / buttonsPerRow);
-                    const btnX = buttonStartX + col * (buttonWidth + 5);
-                    const btnY = buttonStartY + row * (buttonHeight + 5);
+                    const btnX = buttonStartX + col * (buttonWidth + buttonSpacing);
+                    const btnY = buttonStartY + row * (buttonHeight + buttonSpacing);
                     if (x >= btnX && x <= btnX + buttonWidth && y >= btnY && y <= btnY + buttonHeight) {
                         if (usernameText.length < 15) {
                             usernameText += alphabet[i];
@@ -164,11 +165,11 @@
                     }
                 }
                 // Backspace button
-                if (x >= 260 && x <= 310 && y >= 120 && y <= 150) {
+                if (x >= 110 && x <= 160 && y >= 170 && y <= 200) {
                     usernameText = usernameText.slice(0, -1);
                 }
                 // Enter button
-                if (x >= 260 && x <= 310 && y >= 155 && y <= 185 && usernameText.trim() !== "") {
+                if (x >= 170 && x <= 220 && y >= 170 && y <= 200 && usernameText.trim() !== "") {
                     username = usernameText.trim() === "" ? "Anonymous" : usernameText;
                     enteringUsername = false;
                     initGame();
@@ -196,32 +197,33 @@
                 ctx.font = "20px Arial";
                 ctx.textAlign = "center";
                 ctx.fillText("Enter Username:", width / 2, 50);
-                ctx.fillText(usernameText || " ", width / 2, 90);
+                ctx.fillText(usernameText || " ", width / 2, 80);
 
-                // Draw alphabet buttons
-                ctx.font = "16px Arial";
+                // Draw alphabet buttons (A-Z in 2 rows)
+                ctx.font = "12px Arial"; // Reduced from 14 for smaller buttons
                 for (let i = 0; i < alphabet.length; i++) {
                     const col = i % buttonsPerRow;
                     const row = Math.floor(i / buttonsPerRow);
-                    const btnX = buttonStartX + col * (buttonWidth + 5);
-                    const btnY = buttonStartY + row * (buttonHeight + 5);
+                    const btnX = buttonStartX + col * (buttonWidth + buttonSpacing);
+                    const btnY = buttonStartY + row * (buttonHeight + buttonSpacing);
                     ctx.fillStyle = gray;
                     ctx.fillRect(btnX, btnY, buttonWidth, buttonHeight);
                     ctx.fillStyle = white;
-                    ctx.fillText(alphabet[i], btnX + buttonWidth / 2, btnY + buttonHeight / 2 + 5);
+                    ctx.fillText(alphabet[i], btnX + buttonWidth / 2, btnY + buttonHeight / 2 + 4);
                 }
 
-                // Draw Backspace button
+                // Draw Backspace button (below alphabet)
                 ctx.fillStyle = gray;
-                ctx.fillRect(260, 120, 50, 30);
+                ctx.fillRect(110, 170, 50, 30);
                 ctx.fillStyle = white;
-                ctx.fillText("⌫", 285, 140);
+                ctx.font = "16px Arial";
+                ctx.fillText("⌫", 135, 190);
 
-                // Draw Enter button
+                // Draw Enter button (below alphabet, next to Backspace)
                 ctx.fillStyle = usernameText.trim() ? green : gray;
-                ctx.fillRect(260, 155, 50, 30);
+                ctx.fillRect(170, 170, 50, 30);
                 ctx.fillStyle = white;
-                ctx.fillText("✓", 285, 175);
+                ctx.fillText("✓", 195, 190);
 
                 gameLoopId = setTimeout(gameLoop, 1000 / snakeSpeed);
                 return;
